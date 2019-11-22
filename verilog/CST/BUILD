@@ -522,7 +522,7 @@ cc_library(
 cc_library(
     name = "verilog_tree_print",
     srcs = ["verilog_tree_print.cc"],
-    hdrs = ["verilog_tree_print.h"],
+    hdrs = ["verilog_tree_print.h","json.hpp"],
     deps = [
         ":verilog_nonterminals",
         "//common/text:concrete_syntax_leaf",

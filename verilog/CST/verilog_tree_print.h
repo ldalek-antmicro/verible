@@ -23,6 +23,7 @@
 #include "common/text/concrete_syntax_tree.h"
 #include "common/text/symbol.h"
 #include "common/text/tree_utils.h"
+#include "verilog/CST/json.hpp"
 
 namespace verilog {
 
@@ -35,6 +36,9 @@ class VerilogPrettyPrinter : public verible::PrettyPrinter {
   void Visit(const verible::SyntaxTreeNode&) override;
 
   // void Visit(verible::SyntaxTreeNode*) override;
+
+ public:
+  nlohmann::json cst, *cst_current;
 };
 
 // Prints tree contained at root to stream

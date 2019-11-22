@@ -19,6 +19,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <fstream>
 
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
@@ -42,6 +43,7 @@ VerilogPrettyPrinter::VerilogPrettyPrinter(std::ostream* output_stream,
 
 void VerilogPrettyPrinter::Visit(const verible::SyntaxTreeLeaf& leaf) {
   auto_indent() << verible::TokenWithContext{leaf.get(), context_} << std::endl;
+  (*cst_current)["token"] = leaf.get().ToString();
 }
 
 void VerilogPrettyPrinter::Visit(const verible::SyntaxTreeNode& node) {
@@ -50,20 +52,41 @@ void VerilogPrettyPrinter::Visit(const verible::SyntaxTreeNode& node) {
 
   auto_indent() << "Node " << tag_info << "{" << std::endl;
 
+  nlohmann::json& curr = *cst_current;
+  curr["type"] = NodeEnumToString(static_cast<NodeEnum>(node.Tag().tag));
+  cst_current = nullptr;
+
   {
+    std::vector<nlohmann::json> json_nodes;
+
     const verible::ValueSaver<int> value_saver(&indent_, indent_ + 2);
     for (const auto& child : node.children()) {
+      nlohmann::json json_subnode;
+      cst_current = &json_subnode;
       // TODO(fangism): display nullptrs or child indices to show position.
       if (child) child->Accept(this);
+      cst_current = nullptr;
+      if (!json_subnode.empty())
+        json_nodes.push_back(json_subnode);
     }
+
+    if (json_nodes.size())
+      curr["nodes"] = json_nodes;
   }
   auto_indent() << "}" << std::endl;
+  cst_current = &curr;
 }
 
 void PrettyPrintVerilogTree(const verible::Symbol& root, absl::string_view base,
                             std::ostream* stream) {
+  static nlohmann::json cst;
   VerilogPrettyPrinter printer(stream, base);
+  printer.cst_current = &cst;
   root.Accept(&printer);
+  std::ofstream fileout("verible.json");
+  std::stringstream ss;
+  ss << cst.dump(2);
+  fileout << ss.str();
 }
 
 }  // namespace verilog
