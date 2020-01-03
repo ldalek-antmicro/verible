@@ -1628,6 +1628,77 @@ static const std::initializer_list<FormatterTestCase> kFormatterTestCases = {
         "  end\n"
         "endfunction\n",
     },
+    {
+        // This tests for end-else-if with single assignment statements
+        "function foo;"
+        "if (zz) "
+        "a = b;"
+        "else "
+        "b = a;"
+        "endfunction",
+        "function foo;\n"
+        "  if (zz)\n"
+        "    a = b;\n"
+        "  else\n"
+        "    b = a;\n"
+        "endfunction\n",
+    },
+    {
+        // This tests for end-else-if with single assign-modify statements
+        "function foo;"
+        "if (zz) "
+        "a |= b;"
+        "else "
+        "b |= a;"
+        "endfunction",
+        "function foo;\n"
+        "  if (zz) a |= b;\n"
+        "  else b |= a;\n"
+        "endfunction\n",
+    },
+    {
+        // This tests for end-else-if with single assign-modify statements in blocks
+        "function foo;"
+        "if (zz) begin "
+        "a |= b;"
+        "end else begin "
+        "b |= a;"
+        "end endfunction",
+        "function foo;\n"
+        "  if (zz) begin\n"
+        "    a |= b;\n"
+        "  end else begin\n"
+        "    b |= a;\n"
+        "  end\n"
+        "endfunction\n",
+    },
+    {
+        "function foo;"
+        "if (zz) begin "
+        "a |= b;"
+        "end else "
+        "b |= a;"
+        "endfunction",
+        "function foo;\n"
+        "  if (zz) begin\n"
+        "    a |= b;\n"
+        "  end else b |= a;\n"
+        "endfunction\n",
+    },
+    {
+        "function foo;"
+        "if (zz) "
+        "a |= b;"
+        "else begin "
+        "b |= a;"
+        "end endfunction",
+        "function foo;\n"
+        "  if (zz) a |= b;\n"
+        "  else begin\n"
+        "    b |= a;\n"
+        "  end\n"
+        "endfunction\n",
+    },
 
     {
         // randomize function

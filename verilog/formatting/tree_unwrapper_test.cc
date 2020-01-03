@@ -3160,6 +3160,94 @@ const TreeUnwrapperTestData kUnwrapFunctionTestCases[] = {
     },
 
     {
+        "function with else-if branches, single assignment statements",
+        "function foo;"
+        "if (zz) "
+        "a = b;"
+        "else "
+        "b = a;"
+        "endfunction",
+        FunctionHeader(0, L(0, {"function", "foo", ";"})),
+        StatementList(1,
+                      FlowControl(1,  //
+                                  L(1, {"if", "(", "zz", ")"}),
+                                  NL(2, {"a", "=", "b", ";"}),
+                                  L(1, {"else"}),
+                                  NL(2, {"b", "=", "a", ";"}))),
+        L(0, {"endfunction"}),
+    },
+
+    {
+        "function with else-if branches, single assign-modify statements",
+        "function foo;"
+        "if (zz) "
+        "a |= b;"
+        "else "
+        "b |= a;"
+        "endfunction",
+        FunctionHeader(0, L(0, {"function", "foo", ";"})),
+        StatementList(1,
+                      FlowControl(1,  //
+                                  L(1, {"if", "(", "zz", ")", "a", "|=", "b", ";"}),
+                                  L(1, {"else", "b", "|=", "a", ";"}))),
+        L(0, {"endfunction"}),
+    },
+
+    {
+        "function with else-if branches, single assign-modify statements",
+        "function foo;"
+        "if (zz) begin "
+        "a |= b;"
+        "end else begin "
+        "b |= a;"
+        "end endfunction",
+        FunctionHeader(0, L(0, {"function", "foo", ";"})),
+        StatementList(1,
+                      FlowControl(1,  //
+                                  L(1, {"if", "(", "zz", ")", "begin"}),
+                                  NL(2, {"a", "|=", "b", ";"}),
+                                  L(1, {"end", "else", "begin"}),
+                                  NL(2, {"b", "|=", "a", ";"}),
+                                  L(1, {"end"}))),
+        L(0, {"endfunction"}),
+    },
+
+    {
+        "function with else-if branches and single assign-modify statements (true condition)",
+        "function foo;"
+        "if (zz) begin "
+        "a |= b;"
+        "end else "
+        "b |= a;"
+        "endfunction",
+        FunctionHeader(0, L(0, {"function", "foo", ";"})),
+        StatementList(1,
+                      FlowControl(1,  //
+                                  L(1, {"if", "(", "zz", ")", "begin"}),
+                                  NL(2, {"a", "|=", "b", ";"}),
+                                  L(1, {"end", "else", "b", "|=", "a", ";"}))),
+        L(0, {"endfunction"}),
+    },
+
+    {
+        "function with else-if branches, single assign-modify statements (false condition)",
+        "function foo;"
+        "if (zz) "
+        "a |= b;"
+        "else begin "
+        "b |= a;"
+        "end endfunction",
+        FunctionHeader(0, L(0, {"function", "foo", ";"})),
+        StatementList(1,
+                      FlowControl(1,  //
+                                  L(1, {"if", "(", "zz", ")", "a", "|=", "b", ";"}),
+                                  L(1, {"else", "begin"}),
+                                  NL(2, {"b", "|=", "a", ";"}),
+                                  L(1, {"end"}))),
+        L(0, {"endfunction"}),
+    },
+
+    {
         "function with for loop",
         "function foo;"
         "for (x=0;x<N;++x) begin "

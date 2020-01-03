@@ -439,6 +439,10 @@ static verible::TokenSequence::const_iterator StopAtLastNewlineBeforeTreeLeaf(
   return result;
 }
 
+static int GetLastTokenEnum(const verible::TokenPartitionTree* tree) {
+  return std::prev(tree->Value().TokensRange().end())->TokenEnum();
+}
+
 // Scan forward for comments between leaf tokens, and append them to a partition
 // with the correct amount of indentation.
 void TreeUnwrapper::LookAheadBeyondCurrentNode() {
@@ -911,6 +915,10 @@ void TreeUnwrapper::Visit(const verible::SyntaxTreeLeaf& leaf) {
              absl::StartsWith(leaf.get().text, "`uvm")) {
     // For each `uvm macro start a new unwrapped line
     StartNewUnwrappedLine();
+  } else if ((static_cast<int>(tag) == yytokentype::TK_else) &&
+             (GetLastTokenEnum(CurrentTokenPartition()) != yytokentype::TK_end)) {
+      // Start new partition when else keyword is not preceeded by end keyword
+      StartNewUnwrappedLine();
   }
 
   // Advances NextUnfilteredToken(), and extends CurrentUnwrappedLine().
