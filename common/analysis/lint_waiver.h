@@ -124,6 +124,10 @@ class LintWaiverBuilder {
   // TextStructureTokenized from text_structure_test_utils.h.
   void ProcessTokenRangesByLine(const TextStructureView&);
 
+  // Takes a filename with configuration of waivers
+  void ApplyExternalWaivers(const std::set<absl::string_view> active_rules,
+                            absl::string_view waivers_filename);
+
   const LintWaiver& GetLintWaiver() const { return lint_waiver_; }
 
  protected:

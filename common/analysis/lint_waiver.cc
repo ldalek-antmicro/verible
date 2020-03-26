@@ -23,6 +23,7 @@
 #include <set>
 #include <utility>
 #include <vector>
+#include <regex>
 
 #include "absl/strings/str_split.h"
 #include "absl/strings/string_view.h"
@@ -30,6 +31,7 @@
 #include "common/text/text_structure.h"
 #include "common/text/token_info.h"
 #include "common/text/token_stream_view.h"
+#include "common/util/file_util.h"
 #include "common/util/iterator_range.h"
 #include "common/util/logging.h"
 
@@ -178,6 +180,75 @@ void LintWaiverBuilder::ProcessTokenRangesByLine(
                                 total_lines);
   }
   waiver_open_ranges_.clear();
+}
+
+void LintWaiverBuilder::ApplyExternalWaivers(
+    const std::set<absl::string_view> active_rules,
+    absl::string_view waivers_filename) {
+  std::string content;
+  if (!file::GetContents(waivers_filename, &content)) {
+    LOG(ERROR) << "Unable to read waivers file.";
+    return;
+  }
+
+  std::istringstream lines(content);
+  std::string line;
+  while (getline(lines, line)) {
+    std::regex re_waive("^\\s*waive\\s+([-a-z]+)\\s+(\\d+)\\s*(\\d+)?\\s*$");
+
+    std::smatch waive_smatch;
+    if (std::regex_search(line, waive_smatch, re_waive)) {
+      std::string rule_name = waive_smatch[1];
+
+      absl::string_view waived_rule;
+
+      // Match the rule agains existing rules, doing this for two reasons
+      //  1) To verify whether this waiver makes any sense
+      //  2) To find a string_view that outlives the stack here
+      for (auto r : active_rules) {
+        if (std::string(waive_smatch[1]) == r) {
+          waived_rule = r;
+          break;
+        }
+      }
+
+      if (waived_rule.length() == 0) {
+        LOG(WARNING) << "Ignoring waiver file entry "
+                     << "(rule disabled or nonexistent): "
+                     << line;
+      }
+
+      // Check if end line is specified
+      if (waive_smatch[3].matched) {
+        // Multi line waiver
+        size_t line_begin = std::stoul(waive_smatch[2]);
+        size_t line_end = std::stoul(waive_smatch[3]);
+
+        // convert to 0-based indexing, check range
+        if (line_begin-- < 1 || line_begin >= line_end) {
+          LOG(WARNING) << "Ignoring waiver file entry (invalid line ranges): "
+                       << line;
+          continue;
+        }
+
+        lint_waiver_.WaiveLineRange(waived_rule, line_begin, line_end);
+      } else {
+        // Single line waiver
+        size_t line_no = std::stoul(waive_smatch[2]);
+
+        // convert to 0-based indexing, check value
+        if (line_no-- < 1) {
+          LOG(WARNING) << "Ignoring waiver file entry (invalid line number): "
+                       << line;
+          continue;
+        }
+
+        lint_waiver_.WaiveOneLine(waived_rule, line_no);
+      }
+    } else {
+      LOG(WARNING) << "Ignoring waiver file entry (unable to parse): " << line;
+    }
+  }
 }
 
 }  // namespace verible

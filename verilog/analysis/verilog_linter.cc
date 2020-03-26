@@ -59,6 +59,8 @@ ABSL_FLAG(std::string, rules_config, ".rules.verible_lint",
           "Path to lint rules configuration file.");
 ABSL_FLAG(verilog::RuleSet, ruleset, verilog::RuleSet::kDefault,
           "[default|all|none], the base set of rules used by linter");
+ABSL_FLAG(std::string, waivers_file, "",
+          "Path to waivers file.");
 
 namespace verilog {
 
@@ -117,7 +119,8 @@ VerilogLinter::VerilogLinter()
             return IsWhitespace(verilog_tokentype(t.token_enum));
           },
           kLinterTrigger, kLinterWaiveLineCommand, kLinterWaiveStartCommand,
-          kLinterWaiveStopCommand) {}
+          kLinterWaiveStopCommand) {
+    }
 
 void VerilogLinter::Configure(const LinterConfiguration& configuration) {
   if (VLOG_IS_ON(1)) {
@@ -140,6 +143,12 @@ void VerilogLinter::Configure(const LinterConfiguration& configuration) {
   auto syntax_rules = configuration.CreateSyntaxTreeRules();
   for (auto& rule : syntax_rules) {
     syntax_tree_linter_.AddRule(std::move(rule));
+  }
+
+  // Apply external waivers
+  if (FLAGS_waivers_file.IsModified()) {
+    lint_waiver_.ApplyExternalWaivers(configuration.ActiveRuleIds(),
+                                      absl::GetFlag(FLAGS_waivers_file));
   }
 }
 
