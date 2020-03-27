@@ -29,6 +29,7 @@ _linter_test_configs = [
     ("explicit-parameter-storage-type", "explicit_parameter_storage_type", True),
     ("explicit-task-lifetime", "explicit_task_lifetime", True),
     ("forbid-consecutive-null-statements", "forbid_consecutive_null_statements", True),
+    ("forbid-implicit-declarations", "forbid_implicit_declarations", False),
     ("generate-label", "generate_label_module", True),
     ("generate-label", "generate-label-module-body", True),  # uses parse directive
     ("invalid-system-task-function", "psprintf", True),
