@@ -1,6 +1,7 @@
 # This package contains functions and classes for analyzing text structures.
 
 licenses(["notice"])
+load("//bazel:flex.bzl", "genlex")
 
 package(
     default_visibility = [
@@ -43,11 +44,26 @@ cc_library(
     ],
 )
 
+genlex(
+    name = "lint_waiver_config_lex",
+    src = "lint_waiver_config.lex",
+    out = "lint_waiver_config.yy.cc",
+)
+
 cc_library(
     name = "lint_waiver",
-    srcs = ["lint_waiver.cc"],
-    hdrs = ["lint_waiver.h"],
+    srcs = [
+        "lint_waiver.cc",
+        "lint_waiver_config.yy.cc",
+        "lint_waiver_config.cc",
+        ],
+    hdrs = [
+        "lint_waiver.h",
+        "lint_waiver_config.h",
+        ],
     deps = [
+        "//bazel:flex",
+        "//common/lexer:flex_lexer_adapter",
         "//common/strings:comment_utils",
         "//common/text:text_structure",
         "//common/text:token_info",

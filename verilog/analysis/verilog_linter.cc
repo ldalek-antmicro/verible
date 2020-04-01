@@ -23,6 +23,9 @@
 #include <utility>
 #include <vector>
 
+#include <iostream>
+#include <FlexLexer.h>
+
 #include "absl/flags/flag.h"
 #include "absl/status/status.h"
 #include "absl/strings/str_cat.h"

@@ -35,6 +35,8 @@
 #include "common/util/iterator_range.h"
 #include "common/util/logging.h"
 
+#include "common/analysis/lint_waiver_config.h"
+
 namespace verible {
 
 void LintWaiver::WaiveOneLine(absl::string_view rule_name, size_t line_number) {
@@ -191,6 +193,11 @@ void LintWaiverBuilder::ApplyExternalWaivers(
     return;
   }
 
+  LintWaiverConfig lexer{content};
+
+  lexer.yylex();
+
+# if 0
   std::istringstream lines(content);
   std::string line;
   while (getline(lines, line)) {
@@ -249,6 +256,7 @@ void LintWaiverBuilder::ApplyExternalWaivers(
       LOG(WARNING) << "Ignoring waiver file entry (unable to parse): " << line;
     }
   }
+# endif
 }
 
 }  // namespace verible
