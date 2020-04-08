@@ -61,6 +61,9 @@ class ForbidImplicitDeclarationsRule : public verible::SyntaxTreeLintRule {
   void CheckAndPopScope(const verible::Symbol& symbol,
                   const verible::SyntaxTreeContext& context);
 
+  void AnalyzeLHS(const verible::SyntaxTreeLeaf& lval,
+                  const verible::SyntaxTreeContext& context);
+
   // Pushes new scopes on stack
   void DetectScope(const verible::Symbol& symbol,
                    const verible::SyntaxTreeContext& context);
@@ -92,17 +95,25 @@ class ForbidImplicitDeclarationsRule : public verible::SyntaxTreeLintRule {
   // Matches scopes with nets
   // TODO: description, other scopes
   const Matcher net_scope_matcher_ = verible::matcher::AnyOf(
-      NodekModuleItemList());
+      NodekModuleItemList(),
+      NodekGenerateItemList());
 
   // Matches nets declarations
   const Matcher net_declaration_matcher_ =
       NodekNetDeclaration(PathkNetVariableDeclarationAssign().Bind("decls"));
 
-  // Detects nets assignments
-  const Matcher net_assignment_matcher_ = NodekContinuousAssignmentStatement(
-      PathkAssignmentList(PathkNetVariableAssignment(
-          LValueOfAssignment(
-              PathkReference(UnqualifiedReferenceHasId().Bind("lval"))))));
+  const Matcher net_assignment_matcher_ =
+      NodekNetVariableAssignment(PathkLPValue().Bind("lpval"));
+
+  const Matcher net_openrange_matcher_ =
+      NodekBraceGroup(PathkOpenRangeList().Bind("clist"));
+
+  // TODO: Any smart way to merge those two?
+  const Matcher net_reference_matcher_ = NodekReferenceCallBase(
+      PathkReference(UnqualifiedReferenceHasId().Bind("lval")));
+  const Matcher net_expression_reference_matcher_ = NodekExpression(
+      PathkReferenceCallBase(PathkReference(
+      UnqualifiedReferenceHasId().Bind("lval"))));
 
   std::set<verible::LintViolation> violations_;
 

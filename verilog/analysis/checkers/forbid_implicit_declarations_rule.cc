@@ -87,8 +87,10 @@ void ForbidImplicitDeclarationsRule::DetectDeclarations(const verible::Symbol& s
     // Top of the matched tree stack
     CHECK_GE(context.size(), 1);
     const auto& top = context.top(); // scope
-    CHECK_EQ(static_cast<verilog::NodeEnum>(top.Tag().tag),
-             verilog::NodeEnum::kModuleItemList);
+    const auto top_tag = static_cast<verilog::NodeEnum>(top.Tag().tag);
+
+    CHECK((top_tag == NodeEnum::kModuleItemList) ||
+          (top_tag == NodeEnum::kGenerateItemList));
 
     // This could be omitted if we had matchers for begining and ending of scopes
     // e.g. something like kBegin/kEnd. But we would have to modify parser grammar for
@@ -114,17 +116,11 @@ void ForbidImplicitDeclarationsRule::DetectDeclarations(const verible::Symbol& s
   }
 }
 
-void ForbidImplicitDeclarationsRule::DetectReference(const verible::Symbol& symbol,
-                                                     const SyntaxTreeContext& context) {
-  verible::matcher::BoundSymbolManager manager;
-
-  if (net_assignment_matcher_.Matches(symbol, &manager)) {
-    const auto* lval = ABSL_DIE_IF_NULL(manager.GetAs<verible::SyntaxTreeLeaf>("lval"));
-    const verible::TokenInfo& lval_token = lval->get();
+void ForbidImplicitDeclarationsRule::AnalyzeLHS(const verible::SyntaxTreeLeaf& lval,
+                                                const verible::SyntaxTreeContext& context) {
+    const verible::TokenInfo& lval_token = lval.get();
     CHECK_EQ(lval_token.token_enum, SymbolIdentifier);
     const auto& identifier = lval_token.text;
-
-    CheckAndPopScope(symbol, context);
 
     CHECK_GE(scopes.size(), 1);
     auto& scope = scopes.top().declared_nets_;
@@ -135,8 +131,46 @@ void ForbidImplicitDeclarationsRule::DetectReference(const verible::Symbol& symb
     // TODO: Check necessity of call to ContainsAncestor(). CheckAndPopScope()
     // is propably enough.
     if ((node == nullptr) || (!ContainsAncestor(node, context))) {
-      violations_.insert(LintViolation(*lval, kMessage, context));
+      violations_.insert(LintViolation(lval, kMessage, context));
     }
+}
+
+void ForbidImplicitDeclarationsRule::DetectReference(const verible::Symbol& symbol,
+                                                     const SyntaxTreeContext& context) {
+  verible::matcher::BoundSymbolManager manager;
+
+  if (net_assignment_matcher_.Matches(symbol, &manager)) {
+    if (!context.IsInside(NodeEnum::kContinuousAssignmentStatement)) {
+      return ;
+    }
+
+    const auto* lpval = ABSL_DIE_IF_NULL(
+        manager.GetAs<verible::SyntaxTreeNode>("lpval"));
+
+    const auto& children = lpval->children();
+    CHECK_EQ(children.size(), 1);
+    const auto& lhs = *ABSL_DIE_IF_NULL(children[0]);
+
+    CheckAndPopScope(symbol, context);
+
+    if (net_reference_matcher_.Matches(lhs, &manager)) {
+      // Matches simple LPvalue, e.g. assign a = 1'b0;
+      const auto& lval = *ABSL_DIE_IF_NULL(
+          manager.GetAs<verible::SyntaxTreeLeaf>("lval"));
+      AnalyzeLHS(lval, context);
+    } else if (net_openrange_matcher_.Matches(lhs, &manager)) {
+      // Matches concatenated LPvalue, e.g. assign {a,b,c} = 3'b101;
+      const auto* clist = ABSL_DIE_IF_NULL(
+          manager.GetAs<verible::SyntaxTreeNode>("clist"));
+
+      for (const auto& itr : clist->children()) {
+        if (net_expression_reference_matcher_.Matches(*itr, &manager)) {
+          const auto& lval = *ABSL_DIE_IF_NULL(
+              manager.GetAs<verible::SyntaxTreeLeaf>("lval"));
+          AnalyzeLHS(lval, context);
+        }
+      }
+    } // TODO: Should log if we don't get any matches?
   }
 }
 
