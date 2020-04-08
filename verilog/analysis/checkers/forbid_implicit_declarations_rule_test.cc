@@ -37,66 +37,141 @@ TEST(ForbidImplicitDeclarationsRule, FunctionFailures) {
       {""},
       {"module m;\nendmodule\n"},
       {"module m;\nassign ", {kToken, "a1"}, " = 1'b0;\nendmodule"},
-      {"module m;\nwire a1; assign a1 = 1'b0;\nendmodule"},
-      {"module m;\nwire a1;\nmodule foo;\nassign a1 = 1'b0;\nendmodule;\nendmodule"},
-      {"module m;\nwire a1;\nmodule foo;\nendmodule;\nassign a1 = 1'b0;\nendmodule"},
-      {"module m;\nwire a1;\nbegin\nend\nassign a1 = 1'b0;\nendmodule"},
-      {"module m;\nwire a1;\nbegin\nassign a1 = 1'b0;\nend\nassign a1 = 1'b0;\nendmodule"},
-      {"module m;\nwire a1;\nbegin\nwire a1; assign a1 = 1'b0;\nend\nassign a1 = 1'b0;\nendmodule"},
+      {"module m;\n"
+       "  wire a1;\n"
+       "  assign a1 = 1'b0;\n"
+       "endmodule"},
+      {"module m;\n"
+       "  assign ", {kToken, "a1"}, " = 1'b1;\n"
+       "  module foo;\n"
+       "  endmodule\n"
+       "endmodule"},
+      {"module m;\n"
+       "  module foo;\n"
+       "  endmodule\n"
+       "  assign ", {kToken, "a1"}, " = 1'b1;\n"
+       "endmodule"},
+      {"module m;\n"
+       "  wire a1;\n"
+       "  module foo;\n"
+       "    assign a1 = 1'b0;\n"
+       "  endmodule;\n"
+       "endmodule"},
+
+      // declaration and assignement separated by module block
+      {"module m;\n"
+       "  wire a1;\n"
+       "  module foo;\n"
+       "  endmodule;\n"
+       "  assign a1 = 1'b0;\n"
+       "endmodule"},
+      {"module m;\n"
+       "  wire a1;\n"
+       "  module foo;\n"
+       "    assign a1 = 1'b0;\n"
+       "  endmodule\n"
+       "  assign a1 = 1'b0;\n"
+       "endmodule"},
+
+      // overlapping net
+      {"module m;\n"
+       "  wire a1;\n"
+       "  module foo;\n"
+       "    wire a1;\n"
+       "    assign a1 = 1'b0;\n"
+       "  endmodule\n"
+       "  assign a1 = 1'b0;\n"
+       "endmodule"},
 
       // multiple declarations
-      {"module m;\nwire a0, a1;\nassign a0 = 1'b0;\nassign a1 = 1'b1;\nendmodule"},
-      {"module m;\nwire a0, a2;\nassign a0 = 1'b0;\nassign ", {kToken, "a1"}, " = 1'b1;\nendmodule"},
+      {"module m;\n"
+       "  wire a0, a1;\n"
+       "  assign a0 = 1'b0;\n"
+       "  assign a1 = 1'b1;\n"
+       "endmodule"},
+      {"module m;\n"
+       "  wire a0, a2;\n"
+       "  assign a0 = 1'b0;\n"
+       "  assign ", {kToken, "a1"}, " = 1'b1;\n"
+       "endmodule"},
 
       // multiple net assignments
-      {"module m;\nassign ", {kToken, "a"}, " = b, ", {kToken, "c"}, " = d;\nendmodule"},
-      {"module m;\nassign ", {kToken, "a1"}, " = 1'b0;wire a1;\nendmodule"},
+      {"module m;\n"
+       "  assign ", {kToken, "a"}, " = b, ", {kToken, "c"}, " = d;\n"
+       "endmodule"},
+      {"module m;\n"
+       "  assign ", {kToken, "a1"}, " = 1'b0;\n"
+       "  wire a1;\n"
+       "endmodule"},
 
       // out-of-order
-      {"module m;\nassign ", {kToken, "a1"}, " = 1'b0;\nwire a1;\nassign a1 = 1'b1;\nendmodule"},
+      {"module m;\n"
+       "  assign ", {kToken, "a1"}, " = 1'b0;\n"
+       "  wire a1;\n"
+       "  assign a1 = 1'b1;\n"
+       "endmodule"},
 
       // concatenated
-      {"module m;\nassign {", {kToken, "a"}, "} = 1'b0;\nendmodule"},
-      {"module m;\nassign {", {kToken, "a"}, ",", {kToken, "b"}, "} = 2'b01;\nendmodule"},
-      {"module m;\nassign {", {kToken, "a"}, ",", {kToken, "b"}, ",", {kToken, "c"}, "} = 3'b010;\nendmodule"},
-      {"module m;\nwire b;assign {", {kToken, "a"}, ", b,", {kToken, "c"}, "} = 3'b010;\nendmodule"},
-
-      // around scope
-      {"module m;assign ", {kToken, "a1"}, " = 1'b1;\nbegin\nend\nendmodule"},
-      {"module m;begin\nend\nassign ", {kToken, "a1"}, " = 1'b1;endmodule"},
-
-      // declaration and assignement separated by begin-end block
-      {"module m;\nwire a1;\nbegin\nend\nassign a1 = 1'b1;\nendmodule"},
+      {"module m;\n"
+       "  assign {", {kToken, "a"}, "} = 1'b0;\n"
+       "endmodule"},
+      {"module m;\n"
+       "  assign {", {kToken, "a"}, ",", {kToken, "b"}, "} = 2'b01;\n"
+       "endmodule"},
+      {"module m;\n"
+       "  assign {", {kToken, "a"}, ",", {kToken, "b"}, ",", {kToken, "c"}, "} = 3'b010;\n"
+       "endmodule"},
+      {"module m;\n"
+       "  wire b;\n"
+       "  assign {", {kToken, "a"}, ", b,", {kToken, "c"}, "} = 3'b010;\n"
+       "endmodule"},
 
       // out-of-scope
-      {"module m;\nbegin wire a1;\nend\nassign ", {kToken, "a1"}, " = 1'b1;\nendmodule"},
-      {"module m;\nbegin wire a1;\nassign a1 = 1'b0;\nend\nassign ", {kToken, "a1"}, " = 1'b1;\nendmodule"},
-      {"module m;\nwire a1;begin assign a1 = 1'b0;\nend\nassign a1 = 1'b1;\nendmodule"},
-
-      // multi-level begin-end blocks
       {"module m;\n"
+       "  module foo;\n"
+       "    wire a1;\n"
+       "  endmodule\n"
+       "  assign ", {kToken, "a1"}, " = 1'b1;\n"
+       "endmodule"},
+      {"module m;\n"
+       "  module foo;\n"
+       "    wire a1;\n"
+       "    assign a1 = 1'b0;\n"
+       "  endmodule\n"
+       "  assign ", {kToken, "a1"}, " = 1'b1;\n"
+       "endmodule"},
+      {"module m;\n"
+       "  wire a1;\n"
+       "  module foo;\n"
+       "    assign a1 = 1'b0;\n"
+       "  endmodule\n"
+       "  assign a1 = 1'b1;\n"
+       "endmodule"},
+
+      // multi-level module blocks
+      {"module m1;\n"
        "  wire x1;\n"
-       "  begin\n"
+       "  module m2;\n"
        "    wire x2;\n"
-       "    begin\n"
+       "    module m3;\n"
        "      wire x3;\n"
-       "      begin\n"
+       "      module m4;\n"
        "        wire x4;\n"
        "        assign x4 = 1'b0;\n"
        "        assign x3 = 1'b0;\n"
        "        assign x2 = 1'b0;\n"
        "        assign x1 = 1'b0;\n"
-       "      end\n"
+       "      endmodule\n"
        "      assign ", {kToken, "x4"}, " = 1'b0;\n"
        "      assign x3 = 1'b1;\n"
        "      assign x2 = 1'b0;\n"
        "      assign x1 = 1'b0;\n"
-       "    end\n"
+       "    endmodule\n"
        "    assign ", {kToken, "x4"}, " = 1'b0;\n"
        "    assign ", {kToken, "x3"}, " = 1'b0;\n"
        "    assign x2 = 1'b0;\n"
        "    assign x1 = 1'b0;\n"
-       "  end\n"
+       "  endmodule\n"
        "  assign ", {kToken, "x4"}, " = 1'b0;\n"
        "  assign ", {kToken, "x3"}, " = 1'b0;\n"
        "  assign ", {kToken, "x2"}, " = 1'b0;\n"
@@ -157,9 +232,8 @@ TEST(ForbidImplicitDeclarationsRule, FunctionFailures) {
         "  assign a1 = a2;\n"
         "endmodule"},
 
-      // TODO: module scope
-
       // TODO: nets declared inside terminal/port connection list
+      // TODO: assignments/connections inside loop and conditional generate constructs
   };
 
   RunLintTestCases<VerilogAnalyzer, ForbidImplicitDeclarationsRule>(
