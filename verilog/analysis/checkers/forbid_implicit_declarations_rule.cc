@@ -63,9 +63,9 @@ const absl::string_view ForbidImplicitDeclarationsRule::GetIdentifier(
 // checks that we are in correct scope
 void ForbidImplicitDeclarationsRule::CheckAndPopScope(const verible::Symbol& symbol,
                                                 const SyntaxTreeContext& context) {
-  while ((scopes.size() > 0) &&
-         (!ContainsAncestor(scopes.top().symbol_, context))) {
-    scopes.pop();
+  while ((scopes_.size() > 0) &&
+         (!ContainsAncestor(scopes_.back().symbol_, context))) {
+    scopes_.pop_back();
   }
 }
 
@@ -75,7 +75,7 @@ void ForbidImplicitDeclarationsRule::DetectScope(const verible::Symbol& symbol,
 
   if (net_scope_matcher_.Matches(symbol, &manager)) {
     CheckAndPopScope(symbol, context);
-    scopes.push(ScopeType(&symbol));
+    scopes_.push_back(ScopeType(&symbol));
   }
 }
 
@@ -109,8 +109,8 @@ void ForbidImplicitDeclarationsRule::DetectDeclarations(const verible::Symbol& s
       const auto& identifier = leaf.text;
 
       // TODO: check parent scope for net names overlap?
-      CHECK_GE(scopes.size(), 1);
-      auto& scope = scopes.top().declared_nets_;
+      CHECK_GE(scopes_.size(), 1);
+      auto& scope = scopes_.back().declared_nets_;
       scope[identifier] = &top;
     }
   }
@@ -122,17 +122,21 @@ void ForbidImplicitDeclarationsRule::AnalyzeLHS(const verible::SyntaxTreeLeaf& l
     CHECK_EQ(lval_token.token_enum, SymbolIdentifier);
     const auto& identifier = lval_token.text;
 
-    CHECK_GE(scopes.size(), 1);
-    auto& scope = scopes.top().declared_nets_;
-    const auto* node = scope[identifier];
+    for (auto itr = scopes_.rbegin() ; itr != scopes_.rend() ; ++itr) {
+      const auto& scope = itr->declared_nets_;
+      //const auto* node = scope.at(identifier);
+      const auto& node = scope.find(identifier);
 
-    // If there's no decleration nor exists common ancestor then it must be
-    // implicit declaration.
-    // TODO: Check necessity of call to ContainsAncestor(). CheckAndPopScope()
-    // is propably enough.
-    if ((node == nullptr) || (!ContainsAncestor(node, context))) {
-      violations_.insert(LintViolation(lval, kMessage, context));
+      // If there's decleration or exists common ancestor then it's explicit declaration.
+      // TODO: Check necessity of call to ContainsAncestor().
+      // CheckAndPopScope() is propably enough.
+      if ((node != scope.end()) && (ContainsAncestor(node->second, context))) {
+        // Found declaration, stop searching
+        return ;
+      }
     }
+
+    violations_.insert(LintViolation(lval, kMessage, context));
 }
 
 void ForbidImplicitDeclarationsRule::DetectReference(const verible::Symbol& symbol,

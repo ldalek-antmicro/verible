@@ -38,10 +38,10 @@ TEST(ForbidImplicitDeclarationsRule, FunctionFailures) {
       {"module m;\nendmodule\n"},
       {"module m;\nassign ", {kToken, "a1"}, " = 1'b0;\nendmodule"},
       {"module m;\nwire a1; assign a1 = 1'b0;\nendmodule"},
-      {"module m;\nwire a1;\nmodule foo;\nassign ", {kToken, "a1"}, " = 1'b0;\nendmodule;\nendmodule"},
+      {"module m;\nwire a1;\nmodule foo;\nassign a1 = 1'b0;\nendmodule;\nendmodule"},
       {"module m;\nwire a1;\nmodule foo;\nendmodule;\nassign a1 = 1'b0;\nendmodule"},
       {"module m;\nwire a1;\nbegin\nend\nassign a1 = 1'b0;\nendmodule"},
-      {"module m;\nwire a1;\nbegin\nassign ", {kToken, "a1"}, " = 1'b0;\nend\nassign a1 = 1'b0;\nendmodule"},
+      {"module m;\nwire a1;\nbegin\nassign a1 = 1'b0;\nend\nassign a1 = 1'b0;\nendmodule"},
       {"module m;\nwire a1;\nbegin\nwire a1; assign a1 = 1'b0;\nend\nassign a1 = 1'b0;\nendmodule"},
 
       // multiple declarations
@@ -71,7 +71,7 @@ TEST(ForbidImplicitDeclarationsRule, FunctionFailures) {
       // out-of-scope
       {"module m;\nbegin wire a1;\nend\nassign ", {kToken, "a1"}, " = 1'b1;\nendmodule"},
       {"module m;\nbegin wire a1;\nassign a1 = 1'b0;\nend\nassign ", {kToken, "a1"}, " = 1'b1;\nendmodule"},
-      {"module m;\nwire a1;begin assign ", {kToken, "a1"}, " = 1'b0;\nend\nassign a1 = 1'b1;\nendmodule"},
+      {"module m;\nwire a1;begin assign a1 = 1'b0;\nend\nassign a1 = 1'b1;\nendmodule"},
 
       // multi-level begin-end blocks
       {"module m;\n"
@@ -83,19 +83,19 @@ TEST(ForbidImplicitDeclarationsRule, FunctionFailures) {
        "      begin\n"
        "        wire x4;\n"
        "        assign x4 = 1'b0;\n"
-       "        assign ", {kToken, "x3"}, " = 1'b0;\n"
-       "        assign ", {kToken, "x2"}, " = 1'b0;\n"
-       "        assign ", {kToken, "x1"}, " = 1'b0;\n"
+       "        assign x3 = 1'b0;\n"
+       "        assign x2 = 1'b0;\n"
+       "        assign x1 = 1'b0;\n"
        "      end\n"
        "      assign ", {kToken, "x4"}, " = 1'b0;\n"
        "      assign x3 = 1'b1;\n"
-       "      assign ", {kToken, "x2"}, " = 1'b0;\n"
-       "      assign ", {kToken, "x1"}, " = 1'b0;\n"
+       "      assign x2 = 1'b0;\n"
+       "      assign x1 = 1'b0;\n"
        "    end\n"
        "    assign ", {kToken, "x4"}, " = 1'b0;\n"
        "    assign ", {kToken, "x3"}, " = 1'b0;\n"
        "    assign x2 = 1'b0;\n"
-       "    assign ", {kToken, "x1"}, " = 1'b0;\n"
+       "    assign x1 = 1'b0;\n"
        "  end\n"
        "  assign ", {kToken, "x4"}, " = 1'b0;\n"
        "  assign ", {kToken, "x3"}, " = 1'b0;\n"
@@ -134,9 +134,27 @@ TEST(ForbidImplicitDeclarationsRule, FunctionFailures) {
         "  wire a1;\n"
         "  assign a1 = 1'b1;\n"
         "  generate\n"
-        "    assign ", {kToken, "a1"}, " = 1'b1;\n"
+        "    assign a1 = 1'b1;\n"
         "  endgenerate\n"
         "  assign a1 = 1'b0;\n"
+        "endmodule"},
+       {"module m;\n"
+        "  wire a1;\n"
+        "  generate\n"
+        "    wire a2\n"
+        "    assign a1 = 1'b1;\n"
+        "  endgenerate\n"
+        "  assign ", {kToken, "a2"}, " = 1'b0;\n"
+        "endmodule"},
+       {"module m;\n"
+        "  wire a1;\n"
+        "  generate\n"
+        "    wire a2;\n"
+        "    assign a1 = 1'b1;\n"
+        "    assign a2 = a1;\n"
+        "  endgenerate\n"
+        "  assign ", {kToken, "a2"}, " = 1'b0;\n"
+        "  assign a1 = a2;\n"
         "endmodule"},
 
       // TODO: module scope

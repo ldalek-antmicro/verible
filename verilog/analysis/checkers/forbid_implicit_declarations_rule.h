@@ -17,7 +17,6 @@
 
 #include <set>
 #include <string>
-#include <stack>
 
 #include "common/analysis/lint_rule_status.h"
 #include "common/analysis/matcher/core_matchers.h"
@@ -125,7 +124,7 @@ class ForbidImplicitDeclarationsRule : public verible::SyntaxTreeLintRule {
     DeclType declared_nets_;
   };
 
-  std::stack<ScopeType> scopes;
+  std::vector<ScopeType> scopes_;
 };
 
 }  // namespace analysis
