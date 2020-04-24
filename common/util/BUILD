@@ -14,6 +14,11 @@ cc_library(
 )
 
 cc_library(
+    name = "auto_pop_stack",
+    hdrs = ["auto_pop_stack.h"],
+)
+
+cc_library(
     name = "forward",
     hdrs = ["forward.h"],
 )
