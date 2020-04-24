@@ -88,6 +88,24 @@ cc_test(
 )
 
 cc_library(
+    name = "scope_tree_visitor",
+    srcs = ["scope_tree_visitor.cc"],
+    hdrs = ["scope_tree_visitor.h"],
+    deps = [
+        "//common/text:concrete_syntax_leaf",
+        "//common/text:syntax_tree_context",
+        "//common/text:tree_context_visitor",
+        "//common/util:auto_pop_stack",
+        "//verilog/CST:verilog_matchers",
+        "//verilog/CST:verilog_nonterminals",
+        "@com_google_absl//absl/strings"
+    ],
+    alwayslink = 1,
+)
+
+# TODO: scope_tree_visitor_test
+
+cc_library(
     name = "verilog_analyzer",
     srcs = [
         "verilog_analyzer.cc",
