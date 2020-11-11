@@ -551,6 +551,9 @@ Status Formatter::Format(const ExecutionControl& control) {
       *format_tokens_partitions, &unwrapper_data.preformatted_tokens, full_text,
       disabled_ranges_, style_);
 
+  for (const auto& itr : unwrapped_lines)
+    VLOG(1) << "itr: " << itr;
+
   // For each UnwrappedLine: minimize total penalty of wrap/break decisions.
   // TODO(fangism): This could be parallelized if results are written
   // to their own 'slots'.
@@ -580,6 +583,9 @@ Status Formatter::Format(const ExecutionControl& control) {
       }
     }
   }
+
+  for (const auto& itr : formatted_lines_)
+    VLOG(1) << "fmt: " << itr;
 
   // Report any unwrapped lines that failed to complete wrap searching.
   if (!partially_formatted_lines.empty()) {

@@ -538,6 +538,8 @@ void TreeUnwrapper::InterChildNodeHook(const SyntaxTreeNode& node) {
     default: {
       if (Context().DirectParentIs(NodeEnum::kMacroArgList)) {
         StartNewUnwrappedLine(PartitionPolicyEnum::kFitOnLineElseExpand, &node);
+      //} else if (Context().DirectParentIs(NodeEnum::kBinaryExpression)) {
+      //  StartNewUnwrappedLine(PartitionPolicyEnum::kFitOnLineElseExpand, &node);
       }
       break;
     }
@@ -860,7 +862,7 @@ void TreeUnwrapper::SetIndentationsAndCreatePartitions(
                              ? style_.indentation_spaces
                              : 0;
       VisitIndentedSection(node, indent,
-                           PartitionPolicyEnum::kFitOnLineElseExpand);
+                           PartitionPolicyEnum::kAppendFittingSubPartitions);
       break;
     }
 
@@ -1118,6 +1120,18 @@ void TreeUnwrapper::SetIndentationsAndCreatePartitions(
       }
       break;
     }
+
+    //case NodeEnum::kBinaryExpression: {
+    //  // TODO(fangism): Same things as with function/task/method calls
+    //  if (Context().DirectParentsAre({NodeEnum::kExpression, NodeEnum::kParenGroup})) {
+    //    VisitIndentedSection(node, style_.wrap_spaces,
+    //                         PartitionPolicyEnum::kFitOnLineElseExpand);
+    //  } else {
+    //    VisitIndentedSection(node, 0,
+    //                         PartitionPolicyEnum::kFitOnLineElseExpand);
+    //  }
+    //  break;
+    //}
 
     default: {
       TraverseChildren(node);
@@ -1636,8 +1650,15 @@ void TreeUnwrapper::ReshapeTokenPartitions(
     case NodeEnum::kNonblockingAssignmentStatement:  // dest <= src;
     case NodeEnum::kAssignModifyStatement:           // id+=expr
     {
-      VLOG(4) << "before moving semicolon:\n" << partition;
+      VLOG(1) << "before moving semicolon:\n" << partition;
       AttachTrailingSemicolonToPreviousPartition(&partition);
+      VLOG(1) << "before attaching closing parenthesis:\n" << partition;
+      if (partition.Children().size() >= 2) {
+        auto& last = partition.Children().back();
+        if (PartitionStartsWithCloseParen(last)) {
+          verible::MergeLeafIntoPreviousLeaf(&last);
+        }
+      }
       // RHS may have been further partitioned, e.g. a macro call.
       auto& children = partition.Children();
       if (children.size() == 2 && children.front().is_leaf() /* left side */) {
@@ -1663,13 +1684,19 @@ void TreeUnwrapper::ReshapeTokenPartitions(
     case NodeEnum::kContinuousAssignmentStatement: {  // e.g. assign a=0, b=2;
       // TODO(fangism): group into above similar assignment statement cases?
       //   Cannot easily move now due to multiple-assignments.
-      partition.FlattenOnlyChildrenWithChildren();
-      VLOG(4) << "after flatten:\n" << partition;
+      //partition.FlattenOnlyChildrenWithChildren();
+      //VLOG(4) << "after flatten:\n" << partition;
       AttachTrailingSemicolonToPreviousPartition(&partition);
       // Merge the 'assign' keyword with the (first) x=y assignment.
       // TODO(fangism): reshape for multiple assignments.
-      verible::MergeConsecutiveSiblings(&partition, 0);
-      VLOG(4) << "after merging 'assign':\n" << partition;
+      //verible::MergeLeafIntoNextLeaf(partition.LeftmostDescendant());
+      //verible::MergeConsecutiveSiblings(&partition, 0);
+      //VLOG(4) << "after merging 'assign':\n" << partition;
+      //const auto orig_spacing = partition.Children()[0].Value().IndentationSpaces();
+      //for (auto& itr : partition.Children()) {
+      //  itr.Value().SetIndentationSpaces(orig_spacing+style.wrap_spaces);
+      //}
+      //partition.Children()[0].Value().SetIndentationSpaces(orig_spacing);
       break;
     }
     case NodeEnum::kForSpec: {
@@ -1771,6 +1798,30 @@ void TreeUnwrapper::ReshapeTokenPartitions(
       }
       break;
     }
+
+    //case NodeEnum::kBinaryExpression: {
+    //  VLOG(1) << "binary expression:\n" << partition;
+
+    //  // FIXME: Cover missing cases
+    //  //if (partition.Children().size() == 3) {
+    //  //  verible::MergeLeafIntoPreviousLeaf(partition.Children()[1].LeftmostDescendant());
+    //  //  VLOG(1) << "after merging operator:\n" << partition;
+    //  //}
+
+    //  partition.FlattenOnlyChildrenWithChildren();
+    //  VLOG(1) << "after flatten:\n" << partition;
+
+    //  // FIXME: Check operator first '&', '|', etc...
+    //  //for (auto& itr : partition.Children()) {
+    //  //  const auto& uwline = itr.RightmostDescendant()->Value();
+    //  //  if (!uwline.IsEmpty() && uwline.TokensRange().front().TokenEnum() == '&') {
+    //  //    verible::MergeLeafIntoPreviousLeaf(&itr);
+    //  //  }
+    //  //}
+
+    //  break;
+    //}
+
     default:
       break;
   }
@@ -1886,6 +1937,11 @@ void TreeUnwrapper::Visit(const verible::SyntaxTreeLeaf& leaf) {
     }
     default:
       break;
+  }
+
+  // TODO(fangism): Is it bad to test _every_ leaf parent?
+  if (current_context_.DirectParentIs(NodeEnum::kBinaryExpression)) {
+    StartNewUnwrappedLine(PartitionPolicyEnum::kFitOnLineElseExpand, &leaf);
   }
 
   VLOG(3) << "end of " << __FUNCTION__ << " leaf: " << VerboseToken(leaf.get());
