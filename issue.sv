@@ -30,7 +30,7 @@ assign co = (aaaaaaaaaaaaaaaaa&bbbbbbbbbbbbbbbbbbbbbbbb)|
 (bbbbbbbbbbbbbbbbbbb&cccccccccccccccccciiiiiiiiiiiiiiiiiiii);
 endmodule
 
-//module m;
+module m;
 //  //assign aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaillegal_umode =
 //  //    (priv_mode_i & PRIV_LVL_M) &
 //  //    (csr_mstatus_tw_i & wfi_insn);
@@ -47,6 +47,6 @@ endmodule
 //  //assign n = (a && (b*c));
 //  //assign n = (b*c);
 //  //assign n = (b && c && d && e);
-//  //assign n = (((((b) && c) && d) && e) && f);
-//  //assign o = (f && (e && (d && (c && (b))))) || a;
-//endmodule
+  assign n = (((((b) && c) && d) && e) && f);
+  assign o = (f && (e && (d && (c && (b))))) || a;
+endmodule

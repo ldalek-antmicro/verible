@@ -354,6 +354,7 @@ static void DeterminePartitionExpansion(
       LOG(FATAL) << "Got an uninitialized partition policy at: " << uwline;
       break;
     }
+	case PartitionPolicyEnum::kRearrangePartitions:
     // Always view tabular aligned partitions in expanded form.
     case PartitionPolicyEnum::kTabularAlignment:
     case PartitionPolicyEnum::kAlwaysExpand: {

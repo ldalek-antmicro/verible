@@ -63,6 +63,10 @@ enum class PartitionPolicyEnum {
   // element It uses first subpartition length to compute indentation spaces or
   // FormatStyle.wrap_spaces when wrapping.
   kAppendFittingSubPartitions,
+
+  // TODO(ldk): compact/rearrange partitions. its like kAppendFittingSubPartitions with
+  //    the exception that it does not align with the 'header' partition
+  kRearrangePartitions,
 };
 
 std::ostream& operator<<(std::ostream&, PartitionPolicyEnum);

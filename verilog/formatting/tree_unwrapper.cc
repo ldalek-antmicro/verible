@@ -862,7 +862,8 @@ void TreeUnwrapper::SetIndentationsAndCreatePartitions(
                              ? style_.indentation_spaces
                              : 0;
       VisitIndentedSection(node, indent,
-                           PartitionPolicyEnum::kAppendFittingSubPartitions);
+                           //PartitionPolicyEnum::kFitOnLineElseExpand);
+                           PartitionPolicyEnum::kRearrangePartitions);
       break;
     }
 
@@ -1684,14 +1685,14 @@ void TreeUnwrapper::ReshapeTokenPartitions(
     case NodeEnum::kContinuousAssignmentStatement: {  // e.g. assign a=0, b=2;
       // TODO(fangism): group into above similar assignment statement cases?
       //   Cannot easily move now due to multiple-assignments.
-      //partition.FlattenOnlyChildrenWithChildren();
+      partition.FlattenOnlyChildrenWithChildren();
       //VLOG(4) << "after flatten:\n" << partition;
       AttachTrailingSemicolonToPreviousPartition(&partition);
       // Merge the 'assign' keyword with the (first) x=y assignment.
       // TODO(fangism): reshape for multiple assignments.
       //verible::MergeLeafIntoNextLeaf(partition.LeftmostDescendant());
-      //verible::MergeConsecutiveSiblings(&partition, 0);
-      //VLOG(4) << "after merging 'assign':\n" << partition;
+      verible::MergeConsecutiveSiblings(&partition, 0);
+      VLOG(4) << "after merging 'assign':\n" << partition;
       //const auto orig_spacing = partition.Children()[0].Value().IndentationSpaces();
       //for (auto& itr : partition.Children()) {
       //  itr.Value().SetIndentationSpaces(orig_spacing+style.wrap_spaces);
@@ -1800,26 +1801,26 @@ void TreeUnwrapper::ReshapeTokenPartitions(
     }
 
     //case NodeEnum::kBinaryExpression: {
-    //  VLOG(1) << "binary expression:\n" << partition;
+      //VLOG(1) << "binary expression:\n" << partition;
 
-    //  // FIXME: Cover missing cases
-    //  //if (partition.Children().size() == 3) {
-    //  //  verible::MergeLeafIntoPreviousLeaf(partition.Children()[1].LeftmostDescendant());
-    //  //  VLOG(1) << "after merging operator:\n" << partition;
-    //  //}
+      // FIXME: Cover missing cases
+      //if (partition.Children().size() == 3) {
+      //  verible::MergeLeafIntoPreviousLeaf(partition.Children()[1].LeftmostDescendant());
+      //  VLOG(1) << "after merging operator:\n" << partition;
+      //}
 
-    //  partition.FlattenOnlyChildrenWithChildren();
-    //  VLOG(1) << "after flatten:\n" << partition;
+      //partition.FlattenOnlyChildrenWithChildren();
+      //VLOG(1) << "after flatten:\n" << partition;
 
-    //  // FIXME: Check operator first '&', '|', etc...
-    //  //for (auto& itr : partition.Children()) {
-    //  //  const auto& uwline = itr.RightmostDescendant()->Value();
-    //  //  if (!uwline.IsEmpty() && uwline.TokensRange().front().TokenEnum() == '&') {
-    //  //    verible::MergeLeafIntoPreviousLeaf(&itr);
-    //  //  }
-    //  //}
+      // FIXME: Check operator first '&', '|', etc...
+      //for (auto& itr : partition.Children()) {
+      //  const auto& uwline = itr.RightmostDescendant()->Value();
+      //  if (!uwline.IsEmpty() && uwline.TokensRange().front().TokenEnum() == '&') {
+      //    verible::MergeLeafIntoPreviousLeaf(&itr);
+      //  }
+      //}
 
-    //  break;
+      //break;
     //}
 
     default:
