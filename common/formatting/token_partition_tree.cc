@@ -682,4 +682,171 @@ void ReshapeFittingSubpartitions(TokenPartitionTree* node,
   node->AdoptSubtreesFrom(&temporary_tree);
 }
 
+
+static void RearrangePartitions(
+    VectorTree<TokenPartitionTreeWrapper>* fitted_partitions,
+    const partition_range& unfitted_partitions,
+    const BasicFormatStyle& style) {
+
+  // arguments
+  const auto& args = unfitted_partitions;
+
+  // at least one argument
+  CHECK_GE(args.size(), 1);
+
+  // Create first partition group
+  // and populate it with function name (e.g. { [function foo (] })
+  auto* group = fitted_partitions->NewChild(args[0].Value());
+  auto* child = group->NewChild(args[0]);
+
+  //int indent;
+
+  // Try appending first argument
+  //const auto& first_arg = args[0];
+  //auto group_value_arg = group->Value().Value(first_arg);
+  //if (wrap_first_subpartition ||
+  //    (FitsOnLine(group_value_arg, style).fits == false)) {
+  //  // Use wrap indentation
+  //  indent = style.wrap_spaces + group_value_arg.IndentationSpaces();
+
+  //  // wrap line
+  //  group = group->NewSibling(first_arg.Value());  // start new group
+  //  child = group->NewChild(first_arg);  // append not fitting 1st argument
+  //  group->Value().SetIndentationSpaces(indent);
+
+  //  // Wrapped first argument
+  //  wrapped_first_subpartition = true;
+  //} else {
+  //  // Compute new indentation level based on first partition
+  //  const auto& group_value = group->Value().Value();
+  //  const UnwrappedLine& uwline = group_value;
+  //  indent = FitsOnLine(uwline, style).final_column;
+
+  //  // Append first argument to current group
+  //  child = group->NewChild(args[0]);
+  //  group->Value().Update(child);
+  //  // keep group indentation
+
+  //  // Appended first argument
+  //  wrapped_first_subpartition = false;
+  //}
+
+  int indent = style.wrap_spaces + group->Value().Value(args[0]).IndentationSpaces();
+  const auto remaining_args =
+      make_container_range(args.begin() + 1, args.end());
+  for (const auto& arg : remaining_args) {
+    // Every group should have at least one child
+    CHECK_GT(group->Children().size(), 0);
+
+    // Try appending current argument to current line
+    UnwrappedLine uwline = group->Value().Value(arg);
+    if (FitsOnLine(uwline, style).fits) {
+      VLOG(1) << "append";
+      // Fits, appending child
+      child = group->NewChild(arg);
+      group->Value().Update(child);
+    } else {
+      VLOG(1) << "wrap";
+      // Does not fit, start new group with current child
+      group = group->NewSibling(arg.Value());
+      child = group->NewChild(arg);
+      // no need to update because group was created
+      // with current child value
+
+      // Fix group indentation
+      group->Value().SetIndentationSpaces(indent);
+    }
+  }
+}
+
+void ReshapePartitions(TokenPartitionTree* node, const BasicFormatStyle& style) {
+  VLOG(1) << __FUNCTION__ << ", partition:\n" << *node;
+  //VectorTree<TokenPartitionTreeWrapper>* fitted_tree = nullptr;
+
+  // Leaf or simple node, e.g. '[function foo ( ) ;]'
+  if (node->Children().size() < 2) {
+    // Nothing to do
+    return;
+  }
+
+  // Partition with arguments should have at least one argument
+  const auto& args = node->Children();
+  partition_range args_range;
+  //if (args.empty()) {
+  //  // Partitions with one argument may have been flattened one level.
+  //  args_range = make_container_range(children.begin() + 1, children.end());
+  //} else {
+    // Arguments exist in a nested subpartition.
+    args_range = make_container_range(args.begin(), args.end());
+  //}
+
+  VectorTree<TokenPartitionTreeWrapper> rearranged_tree(node->Value());
+  RearrangePartitions(&rearranged_tree, args_range, style);
+
+  // Format unwrapped_lines. At first without forced wrap after first line
+  //bool wrapped_first_token = AppendFittingSubpartitions(
+  //    &unwrapped_tree, header, args_range, style, false);
+
+  //if (wrapped_first_token) {
+  //  // First token was forced to wrap so there's no need to
+  //  // generate wrapped version (it has to be wrapped)
+  //  fitted_tree = &unwrapped_tree;
+  //} else {
+  //  // Generate wrapped version to compare results.
+  //  // Below function passes-trough lines that doesn't fit
+  //  // e.g. very looooooooooong arguments with length over column limit
+  //  // and leaves optimization to line_wrap_searcher.
+  //  // In this approach generated result may not be
+  //  // exactly correct beacause of additional line break done later.
+  //  AppendFittingSubpartitions(&wrapped_tree, header, args_range, style, true);
+
+  //  // Compare number of grouping nodes
+  //  // If number of grouped node is equal then prefer unwrapped result
+  //  if (unwrapped_tree.Children().size() <= wrapped_tree.Children().size()) {
+  //    fitted_tree = &unwrapped_tree;
+  //  } else {
+  //    fitted_tree = &wrapped_tree;
+  //  }
+  //}
+
+  // Rebuild TokenPartitionTree
+  TokenPartitionTree temporary_tree(node->Value());
+
+  // Iterate over partition groups
+  for (const auto& itr : rearranged_tree.Children()) {
+    auto uwline = itr.Value().Value();
+    // Partitions groups should fit in line but we're
+    // leaving final decision to ExpandableTreeView
+    uwline.SetPartitionPolicy(PartitionPolicyEnum::kFitOnLineElseExpand);
+
+    // Create new grouping node
+    auto* group = temporary_tree.NewChild(uwline);
+
+    // Iterate over partitions in group
+    for (const auto& partition : itr.Children()) {
+      // access partition_node_type
+      const auto* node = partition.Value().Node();
+
+      // Append child (warning contains original indentation)
+      group->NewChild(*node);
+    }
+  }
+
+  // Update grouped childrens indentation in case of expanding grouping
+  // partitions
+  for (auto& group : temporary_tree.Children()) {
+    for (auto& subpart : group.Children()) {
+      AdjustIndentationAbsolute(&subpart, group.Value().IndentationSpaces());
+    }
+  }
+
+  // Remove moved nodes
+  node->Children().clear();
+
+  // Move back from temporary tree
+  node->AdoptSubtreesFrom(&temporary_tree);
+
+  VLOG(1) << __FUNCTION__ << ", rearranged:\n" << *node;
+}
+
 }  // namespace verible

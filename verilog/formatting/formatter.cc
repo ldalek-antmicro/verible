@@ -354,7 +354,6 @@ static void DeterminePartitionExpansion(
       LOG(FATAL) << "Got an uninitialized partition policy at: " << uwline;
       break;
     }
-	case PartitionPolicyEnum::kRearrangePartitions:
     // Always view tabular aligned partitions in expanded form.
     case PartitionPolicyEnum::kTabularAlignment:
     case PartitionPolicyEnum::kAlwaysExpand: {
@@ -369,6 +368,7 @@ static void DeterminePartitionExpansion(
       break;
     // Try to fit kAppendFittingSubPartitions partition into single line.
     // If it doesn't fit expand to grouped nodes.
+	case PartitionPolicyEnum::kRearrangePartitions:
     case PartitionPolicyEnum::kAppendFittingSubPartitions:
     case PartitionPolicyEnum::kFitOnLineElseExpand: {
       // !style.try_wrap_long_lines was already handled above
@@ -529,6 +529,9 @@ Status Formatter::Format(const ExecutionControl& control) {
       const auto partition_policy = uwline.PartitionPolicy();
 
       switch (partition_policy) {
+	  	case PartitionPolicyEnum::kRearrangePartitions:
+			verible::ReshapePartitions(&node, style_);
+			break;
         case PartitionPolicyEnum::kAppendFittingSubPartitions:
           // Reshape partition tree with kAppendFittingSubPartitions policy
           verible::ReshapeFittingSubpartitions(&node, style_);

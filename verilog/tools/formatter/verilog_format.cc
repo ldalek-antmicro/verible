@@ -201,7 +201,7 @@ static bool formatOneFile(absl::string_view filename,
 
   // TODO(fangism): support style configuration from flags.
   FormatStyle format_style;
-  //{format_style.column_limit=20;}
+  {format_style.column_limit=40;}
 
   // Handle special debugging modes.
   ExecutionControl formatter_control;
