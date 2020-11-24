@@ -861,7 +861,7 @@ void TreeUnwrapper::SetIndentationsAndCreatePartitions(
                              ? style_.indentation_spaces
                              : 0;
       VisitIndentedSection(node, indent,
-                           PartitionPolicyEnum::kFitOnLineElseExpand);
+                           PartitionPolicyEnum::kCompactPartitions);
       break;
     }
 
@@ -883,6 +883,8 @@ void TreeUnwrapper::SetIndentationsAndCreatePartitions(
         } else {
           TraverseChildren(node);
         }
+      } else if (Context().DirectParentIs(NodeEnum::kBinaryExpression)) {
+        VisitIndentedSection(node, 0, PartitionPolicyEnum::kAppendFittingSubPartitions);
       } else {
         TraverseChildren(node);
       }
@@ -1116,6 +1118,17 @@ void TreeUnwrapper::SetIndentationsAndCreatePartitions(
                              PartitionPolicyEnum::kFitOnLineElseExpand);
       } else {
         TraverseChildren(node);
+      }
+      break;
+    }
+
+    case NodeEnum::kBinaryExpression: {
+      if (Context().DirectParentsAre({NodeEnum::kExpression, NodeEnum::kParenGroup})) {
+        VisitIndentedSection(node, style_.indentation_spaces,
+                             PartitionPolicyEnum::kFitOnLineElseExpand);
+      } else {
+        VisitIndentedSection(node, 0,
+                             PartitionPolicyEnum::kFitOnLineElseExpand);
       }
       break;
     }
@@ -1772,6 +1785,23 @@ void TreeUnwrapper::ReshapeTokenPartitions(
       }
       break;
     }
+
+    case NodeEnum::kBinaryExpression: {
+      VLOG(4) << "binary expression:\n" << partition;
+      verible::MergeLeafIntoPreviousLeaf(partition.Children()[1].LeftmostDescendant());
+      VLOG(4) << "after merging operator:\n" << partition;
+      partition.FlattenOnlyChildrenWithChildren();
+      VLOG(4) << "after flatten:\n" << partition;
+
+      const auto* last = partition.RightmostDescendant();
+      if (PartitionStartsWithCloseParen(*ABSL_DIE_IF_NULL(last)) &&
+          !PartitionEndsWithOpenParen(*ABSL_DIE_IF_NULL(last))) {
+        verible::MergeLeafIntoPreviousLeaf(partition.RightmostDescendant());
+        VLOG(4) << "after moving close paren:\n" << partition;
+      }
+      break;
+    }
+
     default:
       break;
   }
@@ -1888,6 +1918,11 @@ void TreeUnwrapper::Visit(const verible::SyntaxTreeLeaf& leaf) {
     default:
       break;
   }
+
+  // TODO(fangism): Is it bad to test _every_ leaf parent?
+  //if (current_context_.DirectParentIs(NodeEnum::kBinaryExpression)) {
+  //  StartNewUnwrappedLine(PartitionPolicyEnum::kFitOnLineElseExpand, &leaf);
+  //}
 
   VLOG(3) << "end of " << __FUNCTION__ << " leaf: " << VerboseToken(leaf.get());
 }
