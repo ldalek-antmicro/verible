@@ -883,6 +883,8 @@ void TreeUnwrapper::SetIndentationsAndCreatePartitions(
         } else {
           TraverseChildren(node);
         }
+      } else if (Context().DirectParentIs(NodeEnum::kBinaryExpression)) {
+        VisitIndentedSection(node, 0, PartitionPolicyEnum::kAppendFittingSubPartitions);
       } else {
         TraverseChildren(node);
       }
@@ -1116,6 +1118,17 @@ void TreeUnwrapper::SetIndentationsAndCreatePartitions(
                              PartitionPolicyEnum::kFitOnLineElseExpand);
       } else {
         TraverseChildren(node);
+      }
+      break;
+    }
+
+    case NodeEnum::kBinaryExpression: {
+      if (Context().DirectParentsAre({NodeEnum::kExpression, NodeEnum::kParenGroup})) {
+        VisitIndentedSection(node, style_.indentation_spaces,
+                             PartitionPolicyEnum::kFitOnLineElseExpand);
+      } else {
+        VisitIndentedSection(node, 0,
+                             PartitionPolicyEnum::kFitOnLineElseExpand);
       }
       break;
     }
@@ -1639,6 +1652,24 @@ void TreeUnwrapper::ReshapeTokenPartitions(
     {
       VLOG(4) << "before moving semicolon:\n" << partition;
       AttachTrailingSemicolonToPreviousPartition(&partition);
+
+      // WIP:
+      {
+        auto& children = partition.Children();
+        if (children.size() == 3) {
+          const auto& pre  = children[0];
+          const auto& post = children[2];
+          auto& to_flatten = children[1];
+
+          if (PartitionEndsWithOpenParen(pre) && PartitionStartsWithCloseParen(post)) {
+            AdjustIndentationAbsolute(&to_flatten, partition.Value().IndentationSpaces() + style.wrap_spaces);
+            partition.FlattenOnlyChildrenWithChildren();
+
+            verible::MergeLeafIntoPreviousLeaf(partition.RightmostDescendant());
+          }
+        }
+      }
+
       // RHS may have been further partitioned, e.g. a macro call.
       auto& children = partition.Children();
       if (children.size() == 2 && children.front().is_leaf() /* left side */) {
@@ -1772,6 +1803,14 @@ void TreeUnwrapper::ReshapeTokenPartitions(
       }
       break;
     }
+
+    case NodeEnum::kBinaryExpression: {
+      verible::MergeLeafIntoPreviousLeaf(partition.Children()[1].LeftmostDescendant());
+      VLOG(4) << "after merging operator:\n" << partition;
+      partition.FlattenOnlyChildrenWithChildren();
+      break;
+    }
+
     default:
       break;
   }
